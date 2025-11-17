@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>ALTRIX – Lian</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    :root {
+      --bg: #050816;
+      --card: #0b1120;
+      --accent: #ff8a00;
+      --accent-soft: rgba(255, 138, 0, 0.12);
+      --text-main: #f9fafb;
+      --text-muted: #9ca3af;
+      --border-subtle: #111827;
+      --radius-lg: 22px;
+      --radius-md: 16px;
+      --radius-pill: 999px;
+      --shadow-soft: 0 18px 45px rgba(0, 0, 0, 0.55);
+      --success: #22c55e;
+      --danger: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      height: 100%;
+      width: 100%;
+      background: transparent;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+        "Segoe UI", sans-serif;
+      color: var(--text-main);
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ====== BOTÃO FLUTUANTE (LAUNCHER) ====== */
+
+    #lian-launcher {
+      position: fixed;
+      bottom: 60px;
+      right: 50px;
+      width: 130px;
+      height: 130px;
+      background: transparent;
+      border-radius: 50%;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.3s ease;
+      z-index: 9000;
+      opacity: 1;
+    }
+
+    #lian-launcher.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #lian-launcher img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    #lian-launcher:hover {
+      transform: scale(1.07);
+    }
+
+    /* ====== CONTAINER GERAL (CHATBOT) ====== */
+
+    .lian-shell {
+      width: 420px;
+      max-width: 100%;
+      height: 650px;
+      max-height: 100%;
+      background: radial-gradient(circle at top left, #1b1030 0, #050816 42%, #000 100%);
+      border-radius: 26px;
+      box-shadow: var(--shadow-soft);
+      overflow: hidden;
+      display: none; /* escondido inicialmente */
+      flex-direction: column;
+      border: 1px solid rgba(255, 255, 255, 0.02);
+      position: fixed;
+      bottom: 110px;
+      right: 20px;
+      z-index: 9999;
+    }
+
+    .lian-shell.active {
+      display: flex; /* mostra quando ativo */
+    }
+
+    /* ====== HEADER ====== */
+
+    .lian-header {
+      background: linear-gradient(90deg, #ff8a00, #ffb347);
+      padding: 16px 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .lian-header-title {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: #111827;
+      flex: 1;
+      text-align: center;
+    }
+
+    .lian-header-close {
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      border: none;
+      background: rgba(0, 0, 0, 0.2);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.15s ease, transform 0.15s ease;
+    }
+
+    .lian-header-close span {
+      color: #111827;
+      font-weight: 700;
+      font-size: 16px;
+      line-height: 1;
+    }
+
+    .lian-header-close:hover {
+      background: rgba(0, 0, 0, 0.32);
+      transform: translateY(-1px);
+    }
+
+    /* ====== CORPO ====== */
+
+    .lian-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 16px 20px 20px;
+      gap: 6px;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .lian-section-title {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-main);
+      opacity: 0.9;
+    }
+
+    .lian-section-sub {
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* ====== ÁREA DE MENSAGENS (SCROLL SOMENTE AQUI) ====== */
+
+    .lian-chat-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      border-radius: var(--radius-lg);
+      background: radial-gradient(circle at top left, #111827 0, #020617 100%);
+      padding: 14px 16px;
+      border: 1px solid rgba(15, 23, 42, 0.9);
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .lian-messages {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-right: 6px;
+      min-height: 0;
+    }
+
+    .lian-messages::-webkit-scrollbar {
+      width: 8px;
+    }
+    .lian-messages::-webkit-scrollbar-track {
+      background: rgba(255, 138, 0, 0.1);
+      border-radius: 999px;
+    }
+    .lian-messages::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, #ff8a00, #ff6b00);
+      border-radius: 999px;
+      border: 2px solid rgba(0, 0, 0, 0.2);
+    }
+    .lian-messages::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, #ffb347, #ff8a00);
+    }
+
+    .msg {
+      max-width: 100%;
+      border-radius: 14px;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      font-size: 13px;
+      line-height: 1.4;
+      position: relative;
+      border: 1px solid transparent;
+    }
+
+    .msg-label {
+      display: block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .msg--ai {
+      background: radial-gradient(circle at top left, #111827 0, #020617 100%);
+      border-color: rgba(148, 163, 184, 0.18);
+    }
+
+    .msg--ai .msg-label {
+      color: #facc15;
+    }
+
+    .msg--user {
+      background: linear-gradient(135deg, #1d4ed8, #7c3aed);
+      align-self: flex-end;
+      margin-left: auto;
+      color: #e5e7eb;
+      border-color: rgba(59, 130, 246, 0.5);
+    }
+
+    .msg--user .msg-label {
+      color: rgba(226, 232, 240, 0.9);
+    }
+
+    /* ====== INPUT + BOTÕES (FIXO, SEM SCROLL) ====== */
+
+    .lian-input-row {
+      margin-top: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .lian-input {
+      flex: 1;
+      background: rgba(15, 23, 42, 0.95);
+      border-radius: 999px;
+      border: 1px solid rgba(30, 64, 175, 0.75);
+      padding: 9px 14px;
+      font-size: 13px;
+      color: var(--text-main);
+      outline: none;
+      box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.9);
+    }
+
+    .lian-input::placeholder {
+      color: rgba(156, 163, 175, 0.85);
+    }
+
+    .icon-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: var(--radius-pill);
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 17px;
+      transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+    }
+
+    .icon-btn:active {
+      transform: scale(0.96);
+    }
+
+    .icon-btn-mic {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 20% 0, #22c55e 0, #16a34a 60%, #14532d 100%);
+      color: #ecfdf5;
+      box-shadow: 0 0 0 1px rgba(21, 128, 61, 0.7),
+        0 8px 18px rgba(22, 163, 74, 0.45);
+    }
+
+    .icon-btn-mic.off {
+      background: radial-gradient(circle at 20% 0, #4b5563 0, #111827 60%);
+      color: #e5e7eb;
+      box-shadow: 0 0 0 1px rgba(55, 65, 81, 0.8),
+        0 8px 18px rgba(15, 23, 42, 0.8);
+    }
+
+    .icon-btn-send {
+      min-width: 70px;
+      height: 40px;
+      padding: 0 18px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 20% 0, #fed7aa 0, #ff8a00 32%, #d97706 100%);
+      color: #111827;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      box-shadow: 0 0 0 1px rgba(248, 250, 252, 0.4),
+        0 12px 24px rgba(248, 113, 22, 0.55);
+      white-space: nowrap;
+    }
+
+    .icon-btn-send span {
+      transform: translateY(1px);
+    }
+
+    /* ====== PAINEL DO LIAN (SEM SCROLL, MENOR) ====== */
+
+    .lian-voice-panel {
+      margin-top: 4px;
+      border-radius: var(--radius-lg);
+      background: radial-gradient(circle at top left, #020617 0, #000 100%);
+      border: 1px solid rgba(15, 23, 42, 0.95);
+      padding: 10px 14px 12px;
+      display: none;
+      flex-shrink: 0;
+    }
+
+    .lian-shell.voice-active .lian-voice-panel {
+      display: block;
+    }
+
+    .lian-voice-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .lian-voice-name {
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .lian-voice-role {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .lian-voice-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--success);
+      box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.25);
+    }
+
+    .lian-avatar-wrap {
+      margin-top: 6px;
+      border-radius: 18px;
+      overflow: hidden;
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      background: #020617;
+    }
+
+    .lian-avatar-wrap img {
+      display: block;
+      width: 100%;
+      height: auto;
+      max-height: 180px;
+      object-fit: cover;
+      object-position: center 20%;
+    }
+
+    .lian-voice-footer {
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--text-main);
+    }
+
+    .lian-voice-footer strong {
+      color: #4ade80;
+    }
+
+    .lian-speaking-status {
+      margin-top: 8px;
+      font-size: 11px;
+      color: #ff8a00;
+      text-align: center;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    .lian-speaking-status strong {
+      color: #ff8a00;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    /* ====== RODAPÉ FIXO ====== */
+
+    .lian-footer {
+      padding: 4px 20px;
+      text-align: center;
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.4);
+      border-top: 1px solid rgba(55, 65, 81, 0.3);
+      flex-shrink: 0;
+    }
+
+    /* ====== RESPONSIVIDADE MOBILE ====== */
+    @media (max-width: 480px) {
+      .lian-shell {
+        width: 100%;
+        height: 100%;
+        max-height: 100vh;
+        border-radius: 0;
+        bottom: 0;
+        right: 0;
+      }
+
+      .lian-header {
+        padding: 14px 18px;
+      }
+
+      .lian-body {
+        padding: 14px 16px 16px;
+      }
+
+      .lian-input-row {
+        gap: 6px;
+      }
+
+      .icon-btn-send {
+        padding: 0 12px;
+        font-size: 11px;
+      }
+
+      .lian-avatar-wrap img {
+        max-height: 140px;
+      }
+
+      #lian-launcher {
+        width: 110px;
+        height: 110px;
+        bottom: 40px;
+        right: 30px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Botão flutuante (launcher) -->
+  <div id="lian-launcher">
+    <img src="lian-bot.png" alt="Abrir Lian" />
+  </div>
+
+  <!-- Chatbot -->
+  <div class="lian-shell" id="lian-shell">
+    <header class="lian-header">
+      <div class="lian-header-title">ALTRIX - LIAN</div>
+      <button class="lian-header-close" id="close-btn">
+        <span>✕</span>
+      </button>
+    </header>
+
+    <main class="lian-body">
+      <!-- Chat (mensagens + input fixo) -->
+      <section class="lian-chat-wrapper">
+        <div id="messages" class="lian-messages"></div>
+
+        <form id="chat-form" class="lian-input-row">
+          <input
+            id="text-input"
+            class="lian-input"
+            type="text"
+            autocomplete="off"
+            placeholder="Digite sua mensagem ou use o microfone..."
+          />
+
+          <button id="mic-btn" class="icon-btn icon-btn-mic off" type="button" title="Ativar modo voz">
+            🎙
+          </button>
+
+          <button id="send-btn" class="icon-btn icon-btn-send" type="submit">
+            <span>ENVIAR</span>
+          </button>
+        </form>
+      </section>
+
+      <!-- Painel do Lian (aparece só no modo voz) -->
+      <section class="lian-voice-panel" id="voice-panel">
+        <div class="lian-voice-header">
+          <div>
+            <div class="lian-voice-name">LIAN</div>
+            <div class="lian-voice-role">Atendente virtual Yamamóri</div>
+          </div>
+          <div class="lian-voice-status">
+            <span class="status-dot"></span>
+            <span>Modo voz ativado</span>
+          </div>
+        </div>
+
+        <div class="lian-avatar-wrap">
+          <img src="lian-avatar.png" alt="Lian, atendente virtual" />
+        </div>
+
+        <p class="lian-speaking-status" id="speaking-status" style="display: none;">
+          🔊 <strong>Lian is speaking...</strong>
+        </p>
+
+        <p class="lian-voice-footer" id="voice-footer">
+          <strong>Clique no microfone</strong> para falar com o Lian.
+        </p>
+      </section>
+
+      <!-- Rodapé fixo -->
+      <footer class="lian-footer">
+        <span>Powered by <strong>BTRIX AI</strong></span>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    // ========= ELEMENTOS =========
+    const launcher = document.getElementById("lian-launcher");
+    const shell = document.getElementById("lian-shell");
+    const closeBtn = document.getElementById("close-btn");
+    const messagesEl = document.getElementById("messages");
+    const formEl = document.getElementById("chat-form");
+    const inputEl = document.getElementById("text-input");
+    const micBtn = document.getElementById("mic-btn");
+    const voicePanel = document.getElementById("voice-panel");
+    const speakingStatus = document.getElementById("speaking-status");
+    const voiceFooter = document.getElementById("voice-footer");
+
+    // ========= ESTADO =========
+    let sessionId = null;
+    let isSending = false;
+    let voiceMode = false;
+    let isListening = false;
+    const LANG = "en";
+
+    // ========= LAUNCHER CONTROL =========
+    launcher.onclick = () => {
+      shell.classList.add("active");
+      launcher.classList.add("hidden");
+      if (!sessionId) {
+        init();
+      }
+    };
+
+    closeBtn.onclick = () => {
+      shell.classList.remove("active");
+      launcher.classList.remove("hidden");
+    };
+
+    // ========= HELPER =========
+
+    function generateSessionId() {
+      return "web-" + Math.random().toString(36).slice(2, 10);
+    }
+
+    function appendMessage(from, text) {
+      const wrapper = document.createElement("div");
+      wrapper.className = "msg " + (from === "ai" ? "msg--ai" : "msg--user");
+
+      const label = document.createElement("span");
+      label.className = "msg-label";
+      label.textContent = from === "ai" ? "LIAN • ATENDENTE YAMAMÓRI" : "VOCÊ";
+
+      const content = document.createElement("div");
+      content.textContent = text;
+
+      wrapper.appendChild(label);
+      wrapper.appendChild(content);
+      messagesEl.appendChild(wrapper);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function setMicVisual(active) {
+      if (active) {
+        micBtn.classList.remove("off");
+      } else {
+        micBtn.classList.add("off");
+      }
+    }
+
+    function setVoiceMode(on) {
+      voiceMode = on;
+      if (on) {
+        shell.classList.add("voice-active");
+      } else {
+        shell.classList.remove("voice-active");
+      }
+    }
+
+    async function sendMessage(userText) {
+      if (!userText || isSending) return;
+      isSending = true;
+
+      appendMessage("user", userText);
+      inputEl.value = "";
+
+      try {
+        const res = await fetch("/api/lian", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            message: userText,
+            lang: LANG,
+            clientId: sessionId
+          })
+        });
+
+        const data = await res.json();
+        const reply = (data && data.reply) || "Sorry, something went wrong.";
+        appendMessage("ai", reply);
+
+        if (voiceMode) {
+          speakText(reply);
+        }
+      } catch (err) {
+        console.error(err);
+        appendMessage("ai", "Sorry, I had a problem answering. Can you try again?");
+      } finally {
+        isSending = false;
+      }
+    }
+
+    // ========= FALA (TTS) =========
+    let currentAudio = null;
+
+    // Helper: converte base64 para Blob
+    function base64ToBlob(base64, mimeType) {
+      const byteCharacters = atob(base64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      return new Blob([byteArray], { type: mimeType });
+    }
+
+    async function speakText(text) {
+      // Mostra "Lian is speaking..."
+      if (speakingStatus) {
+        speakingStatus.style.display = "block";
+      }
+      if (voiceFooter) {
+        voiceFooter.style.display = "none";
+      }
+
+      // Para áudio anterior se existir
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio = null;
+      }
+
+      try {
+        // Chama backend Vercel (sem expor API key)
+        const response = await fetch("https://lian-backend.vercel.app/api/lian-tts", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            text: text,
+            lang: LANG
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error("TTS API error");
+        }
+
+        // Recebe áudio em base64 do backend
+        const data = await response.json();
+        
+        if (!data.ok || !data.audio) {
+          throw new Error("Invalid TTS response");
+        }
+
+        // Converte base64 para blob e cria URL
+        const audioBlob = base64ToBlob(data.audio, "audio/mp3");
+        const audioUrl = URL.createObjectURL(audioBlob);
+        
+        // Cria e toca o áudio
+        currentAudio = new Audio(audioUrl);
+        
+        currentAudio.onended = () => {
+          // Esconde "Lian is speaking..." quando terminar
+          if (speakingStatus) {
+            speakingStatus.style.display = "none";
+          }
+          if (voiceFooter) {
+            voiceFooter.style.display = "block";
+          }
+          URL.revokeObjectURL(audioUrl);
+          currentAudio = null;
+        };
+
+        currentAudio.onerror = () => {
+          // Esconde em caso de erro
+          if (speakingStatus) {
+            speakingStatus.style.display = "none";
+          }
+          if (voiceFooter) {
+            voiceFooter.style.display = "block";
+          }
+        };
+
+        await currentAudio.play();
+
+      } catch (err) {
+        console.error("TTS Error:", err);
+        // Fallback para Web Speech API se OpenAI falhar
+        if ("speechSynthesis" in window) {
+          const utter = new SpeechSynthesisUtterance(text);
+          utter.lang = "en-US";
+          utter.rate = 1;
+          utter.onend = () => {
+            if (speakingStatus) {
+              speakingStatus.style.display = "none";
+            }
+            if (voiceFooter) {
+              voiceFooter.style.display = "block";
+            }
+          };
+          window.speechSynthesis.cancel();
+          window.speechSynthesis.speak(utter);
+        } else {
+          // Se nenhum TTS funcionar, esconde o status
+          if (speakingStatus) {
+            speakingStatus.style.display = "none";
+          }
+          if (voiceFooter) {
+            voiceFooter.style.display = "block";
+          }
+        }
+      }
+    }
+
+    // ========= RECONHECIMENTO DE VOZ =========
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = null;
+
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.lang = "en-US";
+      recognition.interimResults = false;
+      recognition.continuous = false;
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        inputEl.value = transcript;
+        sendMessage(transcript);
+      };
+
+      recognition.onstart = () => {
+        isListening = true;
+        setMicVisual(true);
+      };
+
+      recognition.onend = () => {
+        isListening = false;
+        setMicVisual(false);
+      };
+    }
+
+    function toggleMic() {
+      if (!voiceMode) {
+        setVoiceMode(true);
+      }
+
+      if (!recognition) {
+        appendMessage(
+          "ai",
+          "Your browser does not support voice recognition. You can still chat by text."
+        );
+        return;
+      }
+
+      if (isListening) {
+        recognition.stop();
+      } else {
+        recognition.start();
+      }
+    }
+
+    // ========= EVENTOS =========
+
+    formEl.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const text = inputEl.value.trim();
+      if (!text) return;
+
+      if (text === "1") {
+        setVoiceMode(true);
+      }
+      if (text === "2") {
+        setVoiceMode(false);
+      }
+
+      sendMessage(text);
+    });
+
+    micBtn.addEventListener("click", () => {
+      toggleMic();
+    });
+
+    // ========= INIT =========
+    function init() {
+      sessionId = generateSessionId();
+
+      const welcome =
+        "Hi! I'm Lian, your virtual waiter. I usually speak English, " +
+        "but I also understand Portuguese and Spanish. " +
+        "How would you like to talk to me? 1) Voice 2) Text only";
+
+      appendMessage("ai", welcome);
+    }
+  </script>
+
+</body>
+</html>
