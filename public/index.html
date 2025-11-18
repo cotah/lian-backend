@@ -83,7 +83,7 @@
     .lian-shell {
       width: 420px;
       max-width: 100%;
-      height: 650px;
+      height: 750px;
       max-height: 100%;
       background: radial-gradient(circle at top left, #1b1030 0, #050816 42%, #000 100%);
       border-radius: 26px;
@@ -390,15 +390,77 @@
       overflow: hidden;
       border: 1px solid rgba(55, 65, 81, 0.9);
       background: #020617;
+      position: relative;
     }
 
     .lian-avatar-wrap img {
       display: block;
       width: 100%;
       height: auto;
-      max-height: 180px;
+      max-height: 140px;
       object-fit: cover;
       object-position: center 20%;
+      animation: breathe 4s ease-in-out infinite; /* respiração suave */
+    }
+
+    /* ====== ANIMAÇÕES DO AVATAR ====== */
+
+    /* Respiração suave (idle) */
+    @keyframes breathe {
+      0%, 100% { transform: scale(1) translateY(0); }
+      50% { transform: scale(1.02) translateY(-2px); }
+    }
+
+    /* Piscar de olhos (idle) */
+    .lian-avatar-wrap.blinking::after {
+      content: '';
+      position: absolute;
+      top: 28%; /* ajustar para altura dos olhos */
+      left: 50%;
+      transform: translateX(-50%);
+      width: 60%;
+      height: 8%;
+      background: rgba(2, 6, 23, 0.9);
+      border-radius: 50%;
+      animation: blink 4s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    @keyframes blink {
+      0%, 48%, 52%, 100% { opacity: 0; }
+      50% { opacity: 1; }
+    }
+
+    /* Boca falando (talking) */
+    .lian-avatar-wrap.talking::before {
+      content: '';
+      position: absolute;
+      top: 52%; /* ajustar para altura da boca */
+      left: 50%;
+      transform: translateX(-50%);
+      width: 25%;
+      height: 6%;
+      background: rgba(255, 138, 0, 0.6);
+      border-radius: 50%;
+      animation: talk 0.3s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    @keyframes talk {
+      0%, 100% { transform: translateX(-50%) scaleY(0.3); opacity: 0.4; }
+      50% { transform: translateX(-50%) scaleY(1); opacity: 0.8; }
+    }
+
+    /* Movimento de cabeça mais intenso quando falando */
+    .lian-avatar-wrap.talking img {
+      animation: breathe-talking 0.6s ease-in-out infinite;
+    }
+
+    @keyframes breathe-talking {
+      0%, 100% { transform: scale(1.01) translateY(-1px) rotate(-0.5deg); }
+      50% { transform: scale(1.03) translateY(-3px) rotate(0.5deg); }
     }
 
     .lian-voice-footer {
@@ -534,7 +596,7 @@
           </div>
         </div>
 
-        <div class="lian-avatar-wrap">
+        <div class="lian-avatar-wrap blinking" id="avatar-wrap">
           <img src="lian-avatar.png" alt="Lian, atendente virtual" />
         </div>
 
@@ -566,6 +628,7 @@
     const voicePanel = document.getElementById("voice-panel");
     const speakingStatus = document.getElementById("speaking-status");
     const voiceFooter = document.getElementById("voice-footer");
+    const avatarWrap = document.getElementById("avatar-wrap");
 
     // ========= ESTADO =========
     let sessionId = null;
@@ -587,6 +650,18 @@
       shell.classList.remove("active");
       launcher.classList.remove("hidden");
     };
+
+    // ========= AVATAR CONTROL =========
+    
+    function setAvatarTalking(isTalking) {
+      if (!avatarWrap) return;
+      
+      if (isTalking) {
+        avatarWrap.classList.add("talking");
+      } else {
+        avatarWrap.classList.remove("talking");
+      }
+    }
 
     // ========= HELPER =========
 
@@ -678,13 +753,14 @@
     }
 
     async function speakText(text) {
-      // Mostra "Lian is speaking..."
+      // Mostra "Lian is speaking..." e ativa animação de fala
       if (speakingStatus) {
         speakingStatus.style.display = "block";
       }
       if (voiceFooter) {
         voiceFooter.style.display = "none";
       }
+      setAvatarTalking(true); // ATIVA ANIMAÇÃO DE FALA
 
       // Para áudio anterior se existir
       if (currentAudio) {
@@ -724,25 +800,27 @@
         currentAudio = new Audio(audioUrl);
         
         currentAudio.onended = () => {
-          // Esconde "Lian is speaking..." quando terminar
+          // Esconde "Lian is speaking..." e desativa animação quando terminar
           if (speakingStatus) {
             speakingStatus.style.display = "none";
           }
           if (voiceFooter) {
             voiceFooter.style.display = "block";
           }
+          setAvatarTalking(false); // DESATIVA ANIMAÇÃO DE FALA
           URL.revokeObjectURL(audioUrl);
           currentAudio = null;
         };
 
         currentAudio.onerror = () => {
-          // Esconde em caso de erro
+          // Esconde em caso de erro e desativa animação
           if (speakingStatus) {
             speakingStatus.style.display = "none";
           }
           if (voiceFooter) {
             voiceFooter.style.display = "block";
           }
+          setAvatarTalking(false); // DESATIVA ANIMAÇÃO DE FALA
         };
 
         await currentAudio.play();
@@ -761,17 +839,19 @@
             if (voiceFooter) {
               voiceFooter.style.display = "block";
             }
+            setAvatarTalking(false); // DESATIVA ANIMAÇÃO DE FALA
           };
           window.speechSynthesis.cancel();
           window.speechSynthesis.speak(utter);
         } else {
-          // Se nenhum TTS funcionar, esconde o status
+          // Se nenhum TTS funcionar, esconde o status e desativa animação
           if (speakingStatus) {
             speakingStatus.style.display = "none";
           }
           if (voiceFooter) {
             voiceFooter.style.display = "block";
           }
+          setAvatarTalking(false); // DESATIVA ANIMAÇÃO DE FALA
         }
       }
     }
