@@ -547,7 +547,7 @@
 
         <div class="lian-avatar-wrap">
           <!-- VÍDEO IDLE (Esperando) -->
-          <video id="lian-idle-video" class="avatar-video" loop muted playsinline>
+          <video id="lian-idle-video" class="avatar-video" muted playsinline>
             <source src="lian-idle.mp4" type="video/mp4">
           </video>
           
@@ -954,12 +954,10 @@
         
         // Previne corte no loop do vídeo IDLE
         // Volta pro início ANTES de terminar (sem piscar!)
-        idleVideo.addEventListener('timeupdate', function() {
-          // Se está perto do fim (0.3s antes), volta pro início
-          if (this.currentTime >= this.duration - 0.3 && this.duration > 0) {
-            this.currentTime = 0;
-          }
-        });
+        idleVideo.addEventListener('ended', function() {
+  this.currentTime = 0;
+  this.play();
+}, false);
       }
       if (talkingVideo) {
         talkingVideo.load();
