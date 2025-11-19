@@ -903,11 +903,8 @@
     function init() {
       sessionId = generateSessionId();
 
-      // MENSAGEM ATUALIZADA PARA YAMAMORI
-      const welcome =
-        "Hi! I'm Lian, your virtual assistant from Yamamori.\n" +
-        "How can I help you today?\n" +
-        "Would you like menu suggestions, reservations, or our opening hours?";
+      // MENSAGEM INICIAL (quando abre o chat)
+      const welcome = "Welcome! Type 'hi' to start";
 
       appendMessage("ai", welcome);
       
