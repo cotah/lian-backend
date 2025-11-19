@@ -390,16 +390,26 @@
       overflow: hidden;
       border: 1px solid rgba(55, 65, 81, 0.9);
       background: #020617;
+      position: relative;
+      width: 100%;
+      height: 175px;
     }
 
-    /* VIDEO STYLING - mantém mesmo tamanho da imagem */
-    .lian-avatar-wrap video {
-      display: block;
+    /* VIDEO STYLING - Dual video com crossfade */
+    .avatar-video {
+      position: absolute;
+      top: 0;
+      left: 0;
       width: 100%;
-      height: auto;
-      max-height: 175px;
+      height: 100%;
       object-fit: cover;
       object-position: center 20%;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .avatar-video.active {
+      opacity: 1;
     }
 
     .lian-voice-footer {
@@ -536,8 +546,13 @@
         </div>
 
         <div class="lian-avatar-wrap">
-          <!-- VÍDEO NO LUGAR DA IMAGEM -->
-          <video id="lian-avatar-video" loop muted playsinline>
+          <!-- VÍDEO IDLE (Esperando) -->
+          <video id="lian-idle-video" class="avatar-video" loop muted playsinline>
+            <source src="lian-idle.mp4" type="video/mp4">
+          </video>
+          
+          <!-- VÍDEO TALKING (Falando) -->
+          <video id="lian-talking-video" class="avatar-video" loop muted playsinline>
             <source src="lian-talking.mp4" type="video/mp4">
           </video>
         </div>
@@ -570,7 +585,8 @@
     const voicePanel = document.getElementById("voice-panel");
     const speakingStatus = document.getElementById("speaking-status");
     const voiceFooter = document.getElementById("voice-footer");
-    const avatarVideo = document.getElementById("lian-avatar-video");
+    const idleVideo = document.getElementById("lian-idle-video");
+    const talkingVideo = document.getElementById("lian-talking-video");
 
     // ========= ESTADO =========
     let sessionId = null;
@@ -628,9 +644,34 @@
       voiceMode = on;
       if (on) {
         shell.classList.add("voice-active");
+        // Começa com vídeo IDLE (esperando)
+        switchToIdle();
       } else {
         shell.classList.remove("voice-active");
+        // Para ambos os vídeos
+        idleVideo.pause();
+        talkingVideo.pause();
+        idleVideo.classList.remove("active");
+        talkingVideo.classList.remove("active");
       }
+    }
+
+    // Funções para trocar entre vídeos
+    function switchToIdle() {
+      talkingVideo.classList.remove("active");
+      talkingVideo.pause();
+      talkingVideo.currentTime = 0;
+      
+      idleVideo.classList.add("active");
+      idleVideo.play().catch(err => console.error('Idle video play error:', err));
+    }
+
+    function switchToTalking() {
+      idleVideo.classList.remove("active");
+      
+      talkingVideo.classList.add("active");
+      talkingVideo.currentTime = 0;
+      talkingVideo.playbackRate = 1.1; // Acelera 10%
     }
 
     async function sendMessage(userText) {
@@ -701,11 +742,7 @@
         currentAudio = null;
       }
 
-      // Para vídeo anterior
-      if (avatarVideo) {
-        avatarVideo.pause();
-        avatarVideo.currentTime = 0;
-      }
+      // Vídeo IDLE continua tocando enquanto carrega...
 
       try {
         // Chama backend Vercel (sem expor API key)
@@ -747,34 +784,29 @@
               currentAudio.addEventListener('canplaythrough', resolve, { once: true });
             }
           }),
-          avatarVideo.readyState >= 3 ? Promise.resolve() : new Promise((resolve) => {
-            avatarVideo.addEventListener('canplaythrough', resolve, { once: true });
+          talkingVideo.readyState >= 3 ? Promise.resolve() : new Promise((resolve) => {
+            talkingVideo.addEventListener('canplaythrough', resolve, { once: true });
           })
         ]);
 
         // Mostra texto
         appendMessage("ai", text);
         
-        // Prepara vídeo (acelera 10% para sincronizar)
-        avatarVideo.playbackRate = 1.1001;
-        avatarVideo.currentTime = 0;
+        // TROCA para vídeo TALKING (fade 0.3s)
+        switchToTalking();
         
-        // Toca ÁUDIO E VÍDEO EXATAMENTE AO MESMO TEMPO!
+        // Toca ÁUDIO E VÍDEO TALKING EXATAMENTE AO MESMO TEMPO!
         await Promise.all([
           currentAudio.play(),
-          avatarVideo.play()
+          talkingVideo.play()
         ]).catch(err => {
           console.error('Playback error:', err);
         });
 
         // Quando áudio terminar
         currentAudio.onended = () => {
-          // Para vídeo e reseta velocidade
-          if (avatarVideo) {
-            avatarVideo.pause();
-            avatarVideo.currentTime = 0;
-            avatarVideo.playbackRate = 1.0; // Reseta velocidade
-          }
+          // VOLTA para vídeo IDLE (fade 0.3s)
+          switchToIdle();
           
           // Esconde "Lian is speaking..."
           if (speakingStatus) {
@@ -789,12 +821,8 @@
         };
 
         currentAudio.onerror = () => {
-          // Para vídeo em caso de erro
-          if (avatarVideo) {
-            avatarVideo.pause();
-            avatarVideo.currentTime = 0;
-            avatarVideo.playbackRate = 1.0; // Reseta velocidade
-          }
+          // VOLTA para vídeo IDLE em caso de erro
+          switchToIdle();
           
           // Esconde status
           if (speakingStatus) {
@@ -808,10 +836,9 @@
       } catch (err) {
         console.error("TTS Error:", err);
         
-        // Para vídeo em caso de erro
-        if (avatarVideo) {
-          avatarVideo.pause();
-          avatarVideo.currentTime = 0;
+        // VOLTA para vídeo IDLE em caso de erro
+        if (voiceMode) {
+          switchToIdle();
         }
         
         // Mostra texto mesmo com erro
@@ -921,9 +948,12 @@
 
       appendMessage("ai", welcome);
       
-      // Pré-carrega o vídeo
-      if (avatarVideo) {
-        avatarVideo.load();
+      // Pré-carrega ambos os vídeos
+      if (idleVideo) {
+        idleVideo.load();
+      }
+      if (talkingVideo) {
+        talkingVideo.load();
       }
     }
   </script>
