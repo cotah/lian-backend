@@ -751,6 +751,9 @@
         // AGORA SIM: Mostra texto + Toca áudio + Toca vídeo TUDO JUNTO!
         appendMessage("ai", text);
         
+        // Acelera vídeo para sincronizar melhor com áudio
+        avatarVideo.playbackRate = 1.1; // 10% mais rápido
+        
         await Promise.all([
           currentAudio.play(),
           avatarVideo.play()
@@ -758,10 +761,11 @@
 
         // Quando áudio terminar
         currentAudio.onended = () => {
-          // Para vídeo
+          // Para vídeo e reseta velocidade
           if (avatarVideo) {
             avatarVideo.pause();
             avatarVideo.currentTime = 0;
+            avatarVideo.playbackRate = 1.0; // Reseta velocidade
           }
           
           // Esconde "Lian is speaking..."
@@ -781,6 +785,7 @@
           if (avatarVideo) {
             avatarVideo.pause();
             avatarVideo.currentTime = 0;
+            avatarVideo.playbackRate = 1.0; // Reseta velocidade
           }
           
           // Esconde status
