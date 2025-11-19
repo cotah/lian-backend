@@ -751,10 +751,6 @@
             avatarVideo.addEventListener('canplaythrough', resolve, { once: true });
           })
         ]);
-
-        // Buffer de segurança (200ms) para garantir que está pronto
-        await new Promise(resolve => setTimeout(resolve, 200));
-
         // Mostra texto
         appendMessage("ai", text);
         
