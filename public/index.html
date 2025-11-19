@@ -405,7 +405,7 @@
       object-fit: cover;
       object-position: center 20%;
       opacity: 0;
-      transition: opacity 0.3s ease;
+      transition: opacity 0.15s ease;
     }
 
     .avatar-video.active {
@@ -954,7 +954,16 @@
       }
       if (talkingVideo) {
         talkingVideo.load();
-      }
+
+       // Previne corte no loop do vídeo IDLE
+        idleVideo.addEventListener('timeupdate', function() {
+       // Se está perto do fim (0.1s antes)
+      if (this.currentTime >= this.duration - 0.1) {
+        this.currentTime = 0; // Volta pro início
+  }
+});
+  
+    }
     }
   </script>
 
