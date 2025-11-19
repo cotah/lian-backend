@@ -751,6 +751,7 @@
             avatarVideo.addEventListener('canplaythrough', resolve, { once: true });
           })
         ]);
+
         // Mostra texto
         appendMessage("ai", text);
         
@@ -758,38 +759,13 @@
         avatarVideo.playbackRate = 1.1;
         avatarVideo.currentTime = 0;
         
-        // Flag para controlar início do vídeo
-        let videoStarted = false;
-        
-        // Detecta quando áudio REALMENTE começa a tocar
-        const syncVideo = () => {
-          if (currentAudio && currentAudio.currentTime > 0.05 && !videoStarted) {
-            videoStarted = true;
-            avatarVideo.play().catch(err => console.error('Video play error:', err));
-          }
-        };
-        
-        // Monitora início do áudio
-        currentAudio.addEventListener('timeupdate', syncVideo);
-        currentAudio.addEventListener('playing', syncVideo);
-        
-        // Toca áudio (vídeo vai tocar quando áudio começar)
-        await currentAudio.play().catch(err => {
-          console.error('Audio play error:', err);
-          // Se áudio falhar, toca vídeo mesmo assim
-          if (!videoStarted) {
-            avatarVideo.play();
-            videoStarted = true;
-          }
+        // Toca ÁUDIO E VÍDEO EXATAMENTE AO MESMO TEMPO!
+        await Promise.all([
+          currentAudio.play(),
+          avatarVideo.play()
+        ]).catch(err => {
+          console.error('Playback error:', err);
         });
-        
-        // Fallback: se vídeo não começou em 500ms, força início
-        setTimeout(() => {
-          if (!videoStarted) {
-            avatarVideo.play();
-            videoStarted = true;
-          }
-        }, 500);
 
         // Quando áudio terminar
         currentAudio.onended = () => {
