@@ -1,5 +1,3 @@
-// api/lian-tts.js
-
 import OpenAI from "openai";
 
 const openai = new OpenAI({
@@ -7,48 +5,52 @@ const openai = new OpenAI({
 });
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    res.status(405).json({ error: "Use o método POST" });
+  // CORS headers
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS,PATCH,DELETE,POST,PUT");
+  res.setHeader("Access-Control-Allow-Headers", "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version");
+
+  if (req.method === "OPTIONS") {
+    res.status(200).end();
     return;
   }
 
-  try {
-    const { text, lang = "en" } = req.body || {};
+  if (req.method !== "POST") {
+    return res.status(405).json({ ok: false, error: "Method not allowed" });
+  }
 
-    if (!text || typeof text !== "string") {
-      res.status(400).json({ error: "Campo 'text' é obrigatório." });
-      return;
+  try {
+    const { text, lang = "en" } = req.body;
+
+    if (!text) {
+      return res.status(400).json({ ok: false, error: "Text is required" });
     }
 
-    // Escolhe uma voz mais masculina/natural.
-    // Opções da OpenAI hoje: alloy, echo, fable, onyx, nova, shimmer. :contentReference[oaicite:0]{index=0}
-    // Onyx e Echo soam mais masculinas.
-    const voice = "nova";
-
-    const ttsResponse = await openai.audio.speech.create({
-      model: "tts-1", // modelo de TTS da OpenAI :contentReference[oaicite:1]{index=1}
-      voice,
+    // Chama OpenAI TTS API
+    const response = await openai.audio.speech.create({
+      model: "tts-1",
+      voice: "nova", // Voz feminina jovem, amigável, profissional
       input: text,
-      format: "mp3",
+      // SEM speed - velocidade normal (1.0)
     });
 
-    // Converte o resultado em base64 pra mandar pro front
-    const buffer = Buffer.from(await ttsResponse.arrayBuffer());
+    // Converte resposta para buffer
+    const buffer = Buffer.from(await response.arrayBuffer());
+    
+    // Converte para base64
     const base64Audio = buffer.toString("base64");
 
-    res.status(200).json({
+    return res.status(200).json({
       ok: true,
-      audio: base64Audio,
-      format: "mp3",
-      voice,
-      lang,
+      audio: base64Audio
     });
-  } catch (err) {
-    console.error("Erro no TTS do Lian:", err);
-    res.status(500).json({
+
+  } catch (error) {
+    console.error("Error in /api/lian-tts:", error);
+    return res.status(500).json({
       ok: false,
-      error: "Falha ao gerar áudio com a OpenAI",
-      details: err?.message || String(err),
+      error: "Internal server error"
     });
   }
 }
