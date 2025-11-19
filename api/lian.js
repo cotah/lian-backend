@@ -34,11 +34,11 @@ export default async function handler(req, res) {
 
     const fixedResponses = {
       // PRIMEIRA RESPOSTA (GREETING)
-      "hi": "Hi! I'm Lian, your virtual assistant from Yamamori. How can I help you today? Would you like menu suggestions, reservations, or our opening hours?",
+      "hi": "Hi! I'm Lian. your virtual assistant from Yamamori. How can I help you today? Would you like menu suggestions, reservations, or our opening hours?",
       
-      "hello": "Hi! I'm Lian, your virtual assistant from Yamamori. How can I help you today? Would you like menu suggestions, reservations, or our opening hours?",
+      "hello": "Hi! I'm Lian. your virtual assistant from Yamamori. How can I help you today? Would you like menu suggestions, reservations, or our opening hours?",
       
-      "hey": "Hi! I'm Lian, your virtual assistant from Yamamori. How can I help you today? Would you like menu suggestions, reservations, or our opening hours?",
+      "hey": "Hi! I'm Lian. your virtual assistant from Yamamori. How can I help you today? Would you like menu suggestions, reservations, or our opening hours?",
       
       // ADICIONE MAIS RESPOSTAS DO SEU SCRIPT AQUI
       // "menu": "Resposta sobre menu...",
