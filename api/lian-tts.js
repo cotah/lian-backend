@@ -23,7 +23,7 @@ export default async function handler(req, res) {
     // Escolhe uma voz mais masculina/natural.
     // Opções da OpenAI hoje: alloy, echo, fable, onyx, nova, shimmer. :contentReference[oaicite:0]{index=0}
     // Onyx e Echo soam mais masculinas.
-    const voice = "onyx";
+    const voice = "nova";
 
     const ttsResponse = await openai.audio.speech.create({
       model: "tts-1", // modelo de TTS da OpenAI :contentReference[oaicite:1]{index=1}
