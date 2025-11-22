@@ -795,128 +795,116 @@
     return new Blob([byteArray], { type: mimeType });
   }
 
-  // Agora recebe também o idioma
-  async function speakTextSynchronized(text, lang) {
-    // Para áudio anterior se existir
-    if (currentAudio) {
-      currentAudio.pause();
-      currentAudio = null;
+async function speakTextSynchronized(text, lang) {
+  // Para áudio anterior se existir
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio = null;
+  }
+
+  try {
+    console.log("[TTS] Iniciando TTS com lang =", lang);
+
+    const response = await fetch(
+      "https://lian-backend.vercel.app/api/lian-tts",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text,
+          lang: lang || "en",
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("TTS API error");
+    }
+
+    const data = await response.json();
+
+    if (!data.ok || !data.audio) {
+      throw new Error("Invalid TTS response");
+    }
+
+    const audioBlob = base64ToBlob(data.audio, "audio/mp3");
+    const audioUrl = URL.createObjectURL(audioBlob);
+
+    currentAudio = new Audio(audioUrl);
+
+    // Mostra texto na tela
+    appendMessage("ai", text);
+
+    // === AQUI GARANTIMOS A TROCA DE VÍDEO ===
+    console.log("[VIDEO] switchToTalking()");
+    switchToTalking();
+
+    // Tenta tocar vídeo e áudio (sem esperar readyState maluco)
+    try {
+      talkingVideo.play().catch((err) => {
+        console.warn("[VIDEO] Erro ao dar play no talkingVideo:", err);
+      });
+    } catch (e) {
+      console.warn("[VIDEO] Exceção ao tentar talkingVideo.play():", e);
     }
 
     try {
-      // Chama backend TTS (sem expor API key)
-      const response = await fetch(
-        "https://lian-backend.vercel.app/api/lian-tts",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            text,
-            lang: lang || "en",
-          }),
-        }
-      );
+      await currentAudio.play();
+    } catch (e) {
+      console.warn("[AUDIO] Erro ao dar play no áudio:", e);
+    }
 
-      if (!response.ok) {
-        throw new Error("TTS API error");
-      }
+    // Quando o áudio terminar, volta para idle
+    currentAudio.onended = () => {
+      console.log("[AUDIO] Áudio terminou, voltando para idle");
+      switchToIdle();
 
-      const data = await response.json();
+      if (speakingStatus) speakingStatus.style.display = "none";
+      if (voiceFooter) voiceFooter.style.display = "block";
 
-      if (!data.ok || !data.audio) {
-        throw new Error("Invalid TTS response");
-      }
+      URL.revokeObjectURL(audioUrl);
+      currentAudio = null;
+    };
 
-      const audioBlob = base64ToBlob(data.audio, "audio/mp3");
-      const audioUrl = URL.createObjectURL(audioBlob);
+    currentAudio.onerror = () => {
+      console.error("[AUDIO] Erro no áudio");
+      switchToIdle();
 
-      currentAudio = new Audio(audioUrl);
+      if (speakingStatus) speakingStatus.style.display = "none";
+      if (voiceFooter) voiceFooter.style.display = "block";
+    };
+  } catch (err) {
+    console.error("TTS Error:", err);
 
-      // garante que áudio e vídeo estejam prontos
-      await Promise.all([
-        new Promise((resolve) => {
-          if (currentAudio.readyState >= 4) {
-            resolve();
-          } else {
-            currentAudio.addEventListener(
-              "canplaythrough",
-              resolve,
-              { once: true }
-            );
-          }
-        }),
-        talkingVideo.readyState >= 3
-          ? Promise.resolve()
-          : new Promise((resolve) => {
-              talkingVideo.addEventListener(
-                "canplaythrough",
-                resolve,
-                { once: true }
-              );
-            }),
-      ]);
+    if (voiceMode) {
+      switchToIdle();
+    }
 
-      // mostra texto na tela
-      appendMessage("ai", text);
+    appendMessage("ai", text);
 
-      // troca pra vídeo TALKING
-      switchToTalking();
+    // Fallback Web Speech API
+    if ("speechSynthesis" in window) {
+      const utter = new SpeechSynthesisUtterance(text);
+      if (lang === "pt") utter.lang = "pt-BR";
+      else if (lang === "ja") utter.lang = "ja-JP";
+      else utter.lang = "en-US";
 
-      await Promise.all([
-        currentAudio.play(),
-        talkingVideo.play().catch((err) =>
-          console.error("Talking video play error:", err)
-        ),
-      ]).catch((err) => {
-        console.error("Playback error:", err);
-      });
-
-      currentAudio.onended = () => {
-        switchToIdle();
-
-        if (speakingStatus) speakingStatus.style.display = "none";
-        if (voiceFooter) voiceFooter.style.display = "block";
-
-        URL.revokeObjectURL(audioUrl);
-        currentAudio = null;
-      };
-
-      currentAudio.onerror = () => {
-        switchToIdle();
+      utter.rate = 1;
+      utter.onend = () => {
         if (speakingStatus) speakingStatus.style.display = "none";
         if (voiceFooter) voiceFooter.style.display = "block";
       };
-    } catch (err) {
-      console.error("TTS Error:", err);
-
-      if (voiceMode) {
-        switchToIdle();
-      }
-
-      appendMessage("ai", text);
-
-      // Fallback Web Speech API
-      if ("speechSynthesis" in window) {
-        const utter = new SpeechSynthesisUtterance(text);
-        if (lang === "pt") utter.lang = "pt-BR";
-        else if (lang === "ja") utter.lang = "ja-JP";
-        else utter.lang = "en-US";
-
-        utter.rate = 1;
-        utter.onend = () => {
-          if (speakingStatus) speakingStatus.style.display = "none";
-          if (voiceFooter) voiceFooter.style.display = "block";
-        };
-        window.speechSynthesis.cancel();
-        window.speechSynthesis.speak(utter);
-      } else {
-        if (speakingStatus) speakingStatus.style.display = "none";
-        if (voiceFooter) voiceFooter.style.display = "block";
-      }
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utter);
+    } else {
+      if (speakingStatus) speakingStatus.style.display = "none";
+      if (voiceFooter) voiceFooter.style.display = "block";
     }
   }
+}
+
 
   // ========= RECONHECIMENTO DE VOZ =========
   const SpeechRecognition =
@@ -990,31 +978,32 @@
   });
 
   // ========= INIT =========
-  function init() {
-    sessionId = generateSessionId();
+ function init() {
+  sessionId = generateSessionId();
 
-    const welcome = "Welcome! Type 'hi' to start";
-    appendMessage("ai", welcome);
+  const welcome = "Welcome! Type 'hi' to start";
+  appendMessage("ai", welcome);
 
-    // pré-carrega vídeos
-    if (idleVideo) {
-      idleVideo.load();
-      idleVideo.addEventListener(
-        "ended",
-        function () {
-          this.currentTime = 0;
-          this.play();
-        },
-        false
-      );
-    }
-    if (talkingVideo) {
-      talkingVideo.load();
-    }
-
-    // ajusta idioma do reconhecimento no início
-    updateRecognitionLang();
+  // pré-carrega vídeos
+  if (idleVideo) {
+    idleVideo.load();
+    idleVideo.classList.add("active"); // 👈 ADICIONA ESSA LINHA
+    idleVideo.addEventListener(
+      "ended",
+      function () {
+        this.currentTime = 0;
+        this.play();
+      },
+      false
+    );
   }
+  if (talkingVideo) {
+    talkingVideo.load();
+  }
+
+  updateRecognitionLang();
+}
+
 </script>
 </body>
 </html>
