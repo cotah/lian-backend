@@ -159,25 +159,6 @@
       min-height: 0;
     }
 
-    .lian-section-title {
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--text-main);
-      opacity: 0.9;
-    }
-
-    .lian-section-sub {
-      font-size: 11px;
-      letter-spacing: 0.16em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      margin-top: 2px;
-    }
-
-    /* ====== ÁREA DE MENSAGENS (SCROLL SOMENTE AQUI) ====== */
-
     .lian-chat-wrapper {
       flex: 1;
       display: flex;
@@ -254,8 +235,6 @@
     .msg--user .msg-label {
       color: rgba(226, 232, 240, 0.9);
     }
-
-    /* ====== INPUT + BOTÕES (FIXO, SEM SCROLL) ====== */
 
     .lian-input-row {
       margin-top: 6px;
@@ -335,8 +314,6 @@
       transform: translateY(1px);
     }
 
-    /* ====== PAINEL DO LIAN (SEM SCROLL, MENOR) ====== */
-
     .lian-voice-panel {
       margin-top: 4px;
       border-radius: var(--radius-lg);
@@ -395,7 +372,6 @@
       height: 175px;
     }
 
-    /* VIDEO STYLING - Dual video com crossfade */
     .avatar-video {
       position: absolute;
       top: 0;
@@ -427,19 +403,14 @@
       font-size: 11px;
       color: #ff8a00;
       text-align: center;
+      display: none;
       animation: pulse 1.5s ease-in-out infinite;
-    }
-
-    .lian-speaking-status strong {
-      color: #ff8a00;
     }
 
     @keyframes pulse {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.6; }
     }
-
-    /* ====== RODAPÉ FIXO ====== */
 
     .lian-footer {
       padding: 3px 20px;
@@ -450,7 +421,6 @@
       flex-shrink: 0;
     }
 
-    /* ====== RESPONSIVIDADE MOBILE ====== */
     @media (max-width: 480px) {
       .lian-shell {
         width: 100%;
@@ -546,30 +516,18 @@
         </div>
 
         <div class="lian-avatar-wrap">
-  <!-- VÍDEO IDLE (Esperando) -->
-  <video
-    id="lian-idle-video"
-    class="avatar-video active"
-    autoplay
-    muted
-    loop
-    playsinline
-  >
-    <source src="lian-idle.mp4" type="video/mp4" />
-  </video>
+          <!-- VÍDEO IDLE (Esperando) -->
+          <video id="lian-idle-video" class="avatar-video active" muted playsinline loop>
+            <source src="lian-idle.mp4" type="video/mp4">
+          </video>
 
-  <!-- VÍDEO TALKING (Falando) -->
-  <video
-    id="lian-talking-video"
-    class="avatar-video"
-    muted
-    playsinline
-  >
-    <source src="lian-talking.mp4" type="video/mp4" />
-  </video>
-</div>
+          <!-- VÍDEO TALKING (Falando) -->
+          <video id="lian-talking-video" class="avatar-video" muted playsinline>
+            <source src="lian-talking.mp4" type="video/mp4">
+          </video>
+        </div>
 
-        <p class="lian-speaking-status" id="speaking-status" style="display: none;">
+        <p class="lian-speaking-status" id="speaking-status">
           🔊 <strong>Lian is speaking...</strong>
         </p>
 
@@ -586,419 +544,333 @@
   </div>
 
   <script>
-  // ========= ELEMENTOS =========
-  const launcher = document.getElementById("lian-launcher");
-  const shell = document.getElementById("lian-shell");
-  const closeBtn = document.getElementById("close-btn");
-  const messagesEl = document.getElementById("messages");
-  const formEl = document.getElementById("chat-form");
-  const inputEl = document.getElementById("text-input");
-  const micBtn = document.getElementById("mic-btn");
-  const voicePanel = document.getElementById("voice-panel");
-  const speakingStatus = document.getElementById("speaking-status");
-  const voiceFooter = document.getElementById("voice-footer");
-  const idleVideo = document.getElementById("lian-idle-video");
-  const talkingVideo = document.getElementById("lian-talking-video");
+    // ========= ELEMENTOS =========
+    const launcher = document.getElementById("lian-launcher");
+    const shell = document.getElementById("lian-shell");
+    const closeBtn = document.getElementById("close-btn");
+    const messagesEl = document.getElementById("messages");
+    const formEl = document.getElementById("chat-form");
+    const inputEl = document.getElementById("text-input");
+    const micBtn = document.getElementById("mic-btn");
+    const voicePanel = document.getElementById("voice-panel");
+    const speakingStatus = document.getElementById("speaking-status");
+    const voiceFooter = document.getElementById("voice-footer");
+    const idleVideo = document.getElementById("lian-idle-video");
+    const talkingVideo = document.getElementById("lian-talking-video");
 
-  // ========= ESTADO =========
-  let sessionId = null;
-  let isSending = false;
-  let voiceMode = false;
-  let isListening = false;
+    // ========= ESTADO =========
+    let sessionId = null;
+    let isSending = false;
+    let voiceMode = false;
+    let isListening = false;
+    const LANG = "en";
 
-  // idioma atual do Lian (vem do backend)
-  // "en" | "pt" | "ja"
-  let currentLanguage = "en";
+    // ========= LAUNCHER CONTROL =========
+    launcher.onclick = () => {
+      shell.classList.add("active");
+      launcher.classList.add("hidden");
+      if (!sessionId) {
+        init();
+      }
+    };
 
-  // ========= LAUNCHER CONTROL =========
-  launcher.onclick = () => {
-    shell.classList.add("active");
-    launcher.classList.add("hidden");
-    if (!sessionId) {
-      init();
-    }
-  };
+    closeBtn.onclick = () => {
+      shell.classList.remove("active");
+      launcher.classList.remove("hidden");
+    };
 
-  closeBtn.onclick = () => {
-    shell.classList.remove("active");
-    launcher.classList.remove("hidden");
-  };
+    // ========= HELPERS =========
 
-  // ========= HELPERS =========
-
-  function generateSessionId() {
-    return "web-" + Math.random().toString(36).slice(2, 10);
-  }
-
-  function appendMessage(from, text) {
-    const wrapper = document.createElement("div");
-    wrapper.className = "msg " + (from === "ai" ? "msg--ai" : "msg--user");
-
-    const label = document.createElement("span");
-    label.className = "msg-label";
-
-    if (from === "ai") {
-      label.textContent = "LIAN • ATENDENTE YAMAMÓRI";
-    } else if (from === "ai-upsell") {
-      // se quiser separar upsell visualmente, poderia ter outra classe
-      wrapper.className = "msg msg--ai";
-      label.textContent = "LIAN • SUGESTÃO EXTRA";
-    } else {
-      label.textContent = "VOCÊ";
+    function generateSessionId() {
+      return "web-" + Math.random().toString(36).slice(2, 10);
     }
 
-    const content = document.createElement("div");
-    content.textContent = text;
+    function appendMessage(from, text) {
+      const wrapper = document.createElement("div");
+      wrapper.className = "msg " + (from === "ai" ? "msg--ai" : "msg--user");
 
-    wrapper.appendChild(label);
-    wrapper.appendChild(content);
-    messagesEl.appendChild(wrapper);
-    messagesEl.scrollTop = messagesEl.scrollHeight;
-  }
+      const label = document.createElement("span");
+      label.className = "msg-label";
+      label.textContent = from === "ai" ? "LIAN • ATENDENTE YAMAMÓRI" : "VOCÊ";
 
-  function setMicVisual(active) {
-    if (active) {
-      micBtn.classList.remove("off");
-    } else {
-      micBtn.classList.add("off");
+      const content = document.createElement("div");
+      content.textContent = text;
+
+      wrapper.appendChild(label);
+      wrapper.appendChild(content);
+      messagesEl.appendChild(wrapper);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
     }
-  }
 
-  function setVoiceMode(on) {
-    voiceMode = on;
-    if (on) {
-      shell.classList.add("voice-active");
-      switchToIdle();
-    } else {
-      shell.classList.remove("voice-active");
-      idleVideo.pause();
-      talkingVideo.pause();
-      idleVideo.classList.remove("active");
-      talkingVideo.classList.remove("active");
-    }
-  }
-
-  // Funções para trocar entre vídeos
- function switchToIdle() {
-  if (!idleVideo || !talkingVideo) return;
-
-  console.log("[VIDEO] switchToIdle");
-
-  talkingVideo.classList.remove("active");
-  idleVideo.classList.add("active");
-}
-
-function switchToTalking() {
-  if (!idleVideo || !talkingVideo) return;
-
-  console.log("[VIDEO] switchToTalking");
-
-  idleVideo.classList.remove("active");
-  talkingVideo.classList.add("active");
-
-  talkingVideo.currentTime = 0;
-  talkingVideo.muted = true;
-
-  talkingVideo
-    .play()
-    .then(() => console.log("[VIDEO] talkingVideo está tocando"))
-    .catch((err) =>
-      console.warn("[VIDEO] Erro ao dar play no talkingVideo:", err)
-    );
-}
-  // Atualiza idioma do reconhecimento de voz conforme currentLanguage
-  function updateRecognitionLang() {
-    if (!recognition) return;
-    if (currentLanguage === "pt") {
-      recognition.lang = "pt-BR";
-    } else if (currentLanguage === "ja") {
-      recognition.lang = "ja-JP";
-    } else {
-      recognition.lang = "en-US";
-    }
-  }
-
-  async function sendMessage(userText) {
-    if (!userText || isSending) return;
-    isSending = true;
-
-    appendMessage("user", userText);
-    inputEl.value = "";
-
-    try {
-      const res = await fetch("/api/lian", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: userText,
-          // mandamos o idioma atual como hint, mas o backend detecta também
-          lang: currentLanguage,
-          clientId: sessionId,
-        }),
-      });
-
-      const data = await res.json();
-
-      const reply = (data && data.reply) || "Sorry, something went wrong.";
-      const intent = data?.intent || "other";
-      const language = data?.language || currentLanguage;
-      const upsell = data?.upsell_suggestion || null;
-
-      // atualiza idioma global com o que o modelo decidiu
-      currentLanguage = language;
-      updateRecognitionLang();
-
-      // junta reply + upsell num texto único pro TTS,
-      // mas mantém visual separado se quiser
-      const fullTextForTTS = upsell ? `${reply}\n\n${upsell}` : reply;
-
-      if (voiceMode) {
-        // mostra status de fala
-        if (speakingStatus) speakingStatus.style.display = "block";
-        if (voiceFooter) voiceFooter.style.display = "none";
-
-        // fala e mostra texto sincronizado
-        await speakTextSynchronized(fullTextForTTS, currentLanguage);
+    function setMicVisual(active) {
+      if (active) {
+        micBtn.classList.remove("off");
       } else {
-        // modo texto: mostra resposta principal
-        appendMessage("ai", reply);
-        // se houver upsell, mostra em uma bolha separada
-        if (upsell) {
-          appendMessage("ai-upsell", upsell);
+        micBtn.classList.add("off");
+      }
+    }
+
+    function setVoiceMode(on) {
+      voiceMode = on;
+      if (on) {
+        shell.classList.add("voice-active");
+        switchToIdle();
+      } else {
+        shell.classList.remove("voice-active");
+        // para os vídeos
+        idleVideo.pause();
+        talkingVideo.pause();
+        idleVideo.classList.remove("active");
+        talkingVideo.classList.remove("active");
+      }
+    }
+
+    function switchToIdle() {
+      talkingVideo.classList.remove("active");
+      talkingVideo.pause();
+      talkingVideo.currentTime = 0;
+
+      idleVideo.classList.add("active");
+      idleVideo.play().catch(err => console.error("Idle play error:", err));
+    }
+
+    function switchToTalking() {
+      idleVideo.classList.remove("active");
+
+      talkingVideo.classList.add("active");
+      talkingVideo.currentTime = 0;
+      talkingVideo.playbackRate = 1.1; // Acelera 10%
+      talkingVideo.play().catch(err => console.error("Talking play error:", err));
+    }
+
+    async function sendMessage(userText) {
+      if (!userText || isSending) return;
+      isSending = true;
+
+      appendMessage("user", userText);
+      inputEl.value = "";
+
+      try {
+        const res = await fetch("/api/lian", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            message: userText,
+            lang: LANG,
+            clientId: sessionId
+          })
+        });
+
+        const data = await res.json();
+        const reply = (data && data.reply) || "Sorry, something went wrong.";
+
+        if (voiceMode) {
+          if (speakingStatus) speakingStatus.style.display = "block";
+          if (voiceFooter) voiceFooter.style.display = "none";
+
+          await speakTextSynchronized(reply);
+        } else {
+          appendMessage("ai", reply);
+        }
+      } catch (err) {
+        console.error(err);
+        appendMessage("ai", "Sorry, I had a problem answering. Can you try again?");
+      } finally {
+        isSending = false;
+      }
+    }
+
+    // ========= FALA (TTS) COM SINCRONIZAÇÃO =========
+    let currentAudio = null;
+
+    function base64ToBlob(base64, mimeType) {
+      const byteCharacters = atob(base64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      return new Blob([byteArray], { type: mimeType });
+    }
+
+    async function speakTextSynchronized(text) {
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio = null;
+      }
+
+      try {
+        const response = await fetch("https://lian-backend.vercel.app/api/lian-tts", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            text: text,
+            lang: LANG
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error("TTS API error");
+        }
+
+        const data = await response.json();
+
+        if (!data.ok || !data.audio) {
+          throw new Error("Invalid TTS response");
+        }
+
+        const audioBlob = base64ToBlob(data.audio, "audio/mp3");
+        const audioUrl = URL.createObjectURL(audioBlob);
+
+        currentAudio = new Audio(audioUrl);
+
+        appendMessage("ai", text);
+
+        switchToTalking();
+
+        await currentAudio.play().catch(err => {
+          console.error("Playback error:", err);
+        });
+
+        currentAudio.onended = () => {
+          switchToIdle();
+
+          if (speakingStatus) {
+            speakingStatus.style.display = "none";
+          }
+          if (voiceFooter) {
+            voiceFooter.style.display = "block";
+          }
+
+          URL.revokeObjectURL(audioUrl);
+          currentAudio = null;
+        };
+
+        currentAudio.onerror = () => {
+          switchToIdle();
+
+          if (speakingStatus) {
+            speakingStatus.style.display = "none";
+          }
+          if (voiceFooter) {
+            voiceFooter.style.display = "block";
+          }
+        };
+      } catch (err) {
+        console.error("TTS Error:", err);
+
+        if (voiceMode) {
+          switchToIdle();
+        }
+
+        appendMessage("ai", text);
+
+        if ("speechSynthesis" in window) {
+          const utter = new SpeechSynthesisUtterance(text);
+          utter.lang = "en-US";
+          utter.rate = 1;
+          utter.onend = () => {
+            if (speakingStatus) {
+              speakingStatus.style.display = "none";
+            }
+            if (voiceFooter) {
+              voiceFooter.style.display = "block";
+            }
+          };
+          window.speechSynthesis.cancel();
+          window.speechSynthesis.speak(utter);
+        } else {
+          if (speakingStatus) {
+            speakingStatus.style.display = "none";
+          }
+          if (voiceFooter) {
+            voiceFooter.style.display = "block";
+          }
         }
       }
-
-      // ======================
-      // MINI FLUXO COM INTENTS
-      // ======================
-
-      // Se a intenção for reserva, podemos dar uma ajudinha extra
-      if (!voiceMode && intent === "reservation") {
-        // Aqui é só um exemplo; você pode trocar o texto/link:
-        appendMessage(
-          "ai",
-          "If you’d like to confirm a table, please let me know the date, time and number of people, or contact the restaurant directly through the official booking page."
-        );
-      }
-
-      // Se a intenção for menu/dish, podemos reforçar que ele pode pedir sugestões
-      if (!voiceMode && (intent === "menu_info" || intent === "dish_recommendation")) {
-        appendMessage(
-          "ai",
-          "If you tell me what you like (for example: spicy, sushi, ramen, vegetarian), I can recommend something more specific."
-        );
-      }
-    } catch (err) {
-      console.error(err);
-      appendMessage(
-        "ai",
-        "Sorry, I had a problem answering. Can you try again?"
-      );
-    } finally {
-      isSending = false;
     }
-  }
 
-  // ========= FALA (TTS) COM SINCRONIZAÇÃO =========
-let currentAudio = null;
+    // ========= RECONHECIMENTO DE VOZ =========
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = null;
 
-// base64 → Blob
-function base64ToBlob(base64, mimeType) {
-  const byteCharacters = atob(base64);
-  const byteNumbers = new Array(byteCharacters.length);
-  for (let i = 0; i < byteCharacters.length; i++) {
-    byteNumbers[i] = byteCharacters.charCodeAt(i);
-  }
-  const byteArray = new Uint8Array(byteNumbers);
-  return new Blob([byteArray], { type: mimeType });
-}
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.lang = "en-US";
+      recognition.interimResults = false;
+      recognition.continuous = false;
 
-async function speakTextSynchronized(text, lang) {
-  // Para áudio anterior, se houver
-  if (currentAudio) {
-    currentAudio.pause();
-    currentAudio = null;
-  }
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        inputEl.value = transcript;
+        sendMessage(transcript);
+      };
 
-  try {
-    console.log("[TTS] Chamando backend TTS com lang =", lang);
+      recognition.onstart = () => {
+        isListening = true;
+        setMicVisual(true);
+      };
 
-    const response = await fetch("/api/lian-tts", {
-      // se estiver usando Vercel separado, troca por URL completa
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        text,
-        lang: lang || "en",
-      }),
+      recognition.onend = () => {
+        isListening = false;
+        setMicVisual(false);
+      };
+    }
+
+    function toggleMic() {
+      if (!voiceMode) {
+        setVoiceMode(true);
+      }
+
+      if (!recognition) {
+        appendMessage(
+          "ai",
+          "Your browser does not support voice recognition. You can still chat by text."
+        );
+        return;
+      }
+
+      if (isListening) {
+        recognition.stop();
+      } else {
+        recognition.start();
+      }
+    }
+
+    // ========= EVENTOS =========
+
+    formEl.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const text = inputEl.value.trim();
+      if (!text) return;
+      sendMessage(text);
     });
 
-    if (!response.ok) throw new Error("TTS API error");
+    micBtn.addEventListener("click", () => {
+      toggleMic();
+    });
 
-    const data = await response.json();
-    if (!data.ok || !data.audio) throw new Error("Invalid TTS response");
+    // ========= INIT =========
+    function init() {
+      sessionId = generateSessionId();
 
-    const audioBlob = base64ToBlob(data.audio, "audio/mp3");
-    const audioUrl = URL.createObjectURL(audioBlob);
-    currentAudio = new Audio(audioUrl);
+      const welcome = "Welcome! Type 'hi' to start";
 
-    // Mostra texto no chat
-    appendMessage("ai", text);
+      appendMessage("ai", welcome);
 
-    // Troca pro vídeo TALKING antes de tocar o áudio
-    switchToTalking();
-
-    try {
-      await currentAudio.play();
-      console.log("[AUDIO] Áudio começou a tocar");
-    } catch (e) {
-      console.warn("[AUDIO] Erro ao dar play no áudio:", e);
+      if (idleVideo) {
+        idleVideo.load();
+        idleVideo.play().catch(err => console.error("Idle load error:", err));
+      }
+      if (talkingVideo) {
+        talkingVideo.load();
+      }
     }
-
-    currentAudio.onended = () => {
-      console.log("[AUDIO] Áudio terminou, voltando para idle");
-      switchToIdle();
-
-      if (speakingStatus) speakingStatus.style.display = "none";
-      if (voiceFooter) voiceFooter.style.display = "block";
-
-      URL.revokeObjectURL(audioUrl);
-      currentAudio = null;
-    };
-
-    currentAudio.onerror = () => {
-      console.error("[AUDIO] Erro no áudio");
-      switchToIdle();
-
-      if (speakingStatus) speakingStatus.style.display = "none";
-      if (voiceFooter) voiceFooter.style.display = "block";
-    };
-  } catch (err) {
-    console.error("TTS Error:", err);
-
-    if (voiceMode) switchToIdle();
-    appendMessage("ai", text);
-
-    // Fallback Web Speech API
-    if ("speechSynthesis" in window) {
-      const utter = new SpeechSynthesisUtterance(text);
-      if (lang === "pt") utter.lang = "pt-BR";
-      else if (lang === "ja") utter.lang = "ja-JP";
-      else utter.lang = "en-US";
-
-      utter.rate = 1;
-      utter.onend = () => {
-        if (speakingStatus) speakingStatus.style.display = "none";
-        if (voiceFooter) voiceFooter.style.display = "block";
-      };
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(utter);
-    } else {
-      if (speakingStatus) speakingStatus.style.display = "none";
-      if (voiceFooter) voiceFooter.style.display = "block";
-    }
-  }
-}
-  // ========= RECONHECIMENTO DE VOZ =========
-  const SpeechRecognition =
-    window.SpeechRecognition || window.webkitSpeechRecognition;
-  let recognition = null;
-
-  if (SpeechRecognition) {
-    recognition = new SpeechRecognition();
-    recognition.interimResults = false;
-    recognition.continuous = false;
-
-    // idioma inicial
-    updateRecognitionLang();
-
-    recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript;
-      inputEl.value = transcript;
-      sendMessage(transcript);
-    };
-
-    recognition.onstart = () => {
-      isListening = true;
-      setMicVisual(true);
-    };
-
-    recognition.onend = () => {
-      isListening = false;
-      setMicVisual(false);
-    };
-  }
-
-  function toggleMic() {
-    if (!voiceMode) {
-      setVoiceMode(true);
-    }
-
-    if (!recognition) {
-      appendMessage(
-        "ai",
-        "Your browser does not support voice recognition. You can still chat by text."
-      );
-      return;
-    }
-
-    if (isListening) {
-      recognition.stop();
-    } else {
-      recognition.start();
-    }
-  }
-
-  // ========= EVENTOS =========
-
-  formEl.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const text = inputEl.value.trim();
-    if (!text) return;
-
-    if (text === "1") {
-      setVoiceMode(true);
-    }
-    if (text === "2") {
-      setVoiceMode(false);
-    }
-
-    sendMessage(text);
-  });
-
-  micBtn.addEventListener("click", () => {
-    toggleMic();
-  });
-
-  // ========= INIT =========
- function init() {
-  sessionId = generateSessionId();
-
-  const welcome = "Welcome! Type 'hi' to start";
-  appendMessage("ai", welcome);
-
-  // pré-carrega vídeos
-  if (idleVideo) {
-    idleVideo.load();
-    idleVideo.classList.add("active"); // 👈 ADICIONA ESSA LINHA
-    idleVideo.addEventListener(
-      "ended",
-      function () {
-        this.currentTime = 0;
-        this.play();
-      },
-      false
-    );
-  }
-  if (talkingVideo) {
-    talkingVideo.load();
-  }
-
-  updateRecognitionLang();
-}
-
-</script>
+  </script>
 </body>
 </html>
