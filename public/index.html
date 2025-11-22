@@ -668,23 +668,39 @@
 
   // Funções para trocar entre vídeos
   function switchToIdle() {
-    talkingVideo.classList.remove("active");
-    talkingVideo.pause();
-    talkingVideo.currentTime = 0;
+  if (!idleVideo || !talkingVideo) return;
 
-    idleVideo.classList.add("active");
-    idleVideo.play().catch((err) =>
-      console.error("Idle video play error:", err)
-    );
-  }
+  // desativa talking
+  talkingVideo.pause();
+  talkingVideo.currentTime = 0;
+  talkingVideo.classList.remove("active");
 
-  function switchToTalking() {
-    idleVideo.classList.remove("active");
+  // ativa idle
+  idleVideo.classList.add("active");
+  // garante que tá mudo e pode dar autoplay
+  idleVideo.muted = true;
+  idleVideo.play().catch((err) =>
+    console.warn("[VIDEO] Erro ao tocar idle:", err)
+  );
+}
 
-    talkingVideo.classList.add("active");
-    talkingVideo.currentTime = 0;
-    talkingVideo.playbackRate = 1.1; // Acelera 10%
-  }
+function switchToTalking() {
+  if (!idleVideo || !talkingVideo) return;
+
+  // desativa idle
+  idleVideo.pause();
+  idleVideo.classList.remove("active");
+
+  // ativa talking
+  talkingVideo.classList.add("active");
+  talkingVideo.muted = true; // importante pra autoplay
+  talkingVideo.currentTime = 0;
+
+  talkingVideo.play().catch((err) =>
+    console.warn("[VIDEO] Erro ao tocar talking:", err)
+  );
+}
+
 
   // Atualiza idioma do reconhecimento de voz conforme currentLanguage
   function updateRecognitionLang() {
@@ -809,9 +825,7 @@ async function speakTextSynchronized(text, lang) {
       "https://lian-backend.vercel.app/api/lian-tts",
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           text,
           lang: lang || "en",
@@ -819,15 +833,10 @@ async function speakTextSynchronized(text, lang) {
       }
     );
 
-    if (!response.ok) {
-      throw new Error("TTS API error");
-    }
+    if (!response.ok) throw new Error("TTS API error");
 
     const data = await response.json();
-
-    if (!data.ok || !data.audio) {
-      throw new Error("Invalid TTS response");
-    }
+    if (!data.ok || !data.audio) throw new Error("Invalid TTS response");
 
     const audioBlob = base64ToBlob(data.audio, "audio/mp3");
     const audioUrl = URL.createObjectURL(audioBlob);
@@ -837,26 +846,18 @@ async function speakTextSynchronized(text, lang) {
     // Mostra texto na tela
     appendMessage("ai", text);
 
-    // === AQUI GARANTIMOS A TROCA DE VÍDEO ===
+    // 🔥 MUITO IMPORTANTE: troca pro vídeo TALKING ANTES do áudio
     console.log("[VIDEO] switchToTalking()");
     switchToTalking();
 
-    // Tenta tocar vídeo e áudio (sem esperar readyState maluco)
-    try {
-      talkingVideo.play().catch((err) => {
-        console.warn("[VIDEO] Erro ao dar play no talkingVideo:", err);
-      });
-    } catch (e) {
-      console.warn("[VIDEO] Exceção ao tentar talkingVideo.play():", e);
-    }
-
+    // Toca áudio
     try {
       await currentAudio.play();
     } catch (e) {
       console.warn("[AUDIO] Erro ao dar play no áudio:", e);
     }
 
-    // Quando o áudio terminar, volta para idle
+    // Quando o áudio acabar, volta pro idle
     currentAudio.onended = () => {
       console.log("[AUDIO] Áudio terminou, voltando para idle");
       switchToIdle();
@@ -878,9 +879,7 @@ async function speakTextSynchronized(text, lang) {
   } catch (err) {
     console.error("TTS Error:", err);
 
-    if (voiceMode) {
-      switchToIdle();
-    }
+    if (voiceMode) switchToIdle();
 
     appendMessage("ai", text);
 
@@ -904,8 +903,6 @@ async function speakTextSynchronized(text, lang) {
     }
   }
 }
-
-
   // ========= RECONHECIMENTO DE VOZ =========
   const SpeechRecognition =
     window.SpeechRecognition || window.webkitSpeechRecognition;
